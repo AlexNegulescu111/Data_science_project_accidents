@@ -1,138 +1,107 @@
+"""EDA: distributions of accidents by time and location (figures in visuals/eda/)."""
+import sys
 from pathlib import Path
-ROOT = Path(__file__).resolve().parents[1]
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import numpy as np
+import seaborn as sns
 
-df = pd.read_csv(ROOT / "data" / "accidente_clean.csv")
-print(df.info())
+from accidents.config import UNKNOWN_COUNTY
+from accidents.data import load_clean
+from accidents.plotting import plt, save_figure
 
-# 1. Vizualize data - Distribution of traffic ressumption(reluare)
-plt.figure(figsize=(10, 5))
-sns.histplot(df["reluare"].dropna(), bins = 30, kde=True, color="blue")
-plt.title("Traffic ressumtion distribution")
-plt.xlabel("Minutes")
-plt.ylabel("Frequency")
-plt.tight_layout()
-plt.show()
-
-
-# 1. Vizualize data - Traffic ressumption (reluare) - boxplot
-plt.figure(figsize=(10, 5))
-sns.boxplot(data=df["reluare"], vert=True )
-plt.yscale("log")
-plt.title("Traffic ressumption values (log scale)")
-plt.ylabel("Minutes(log)")
-plt.grid(True)
-plt.show()
-
-# 2. Manage outlayers via IQR
-reluare = df["reluare"].dropna()
-q1 = np.quantile(reluare, 0.25)
-q3 = np.quantile(reluare, 0.75)
-iqr = q3 - q1
-low_val = q1 - 1.5*iqr
-high_val = q3 + 1.5*iqr
-if low_val<0:
-    low_val = 0
-print(f"Values caught between {low_val} - {high_val}")
-no_outlayers = (reluare>=low_val)&(reluare<=high_val)
-print(f"No outlayers: {no_outlayers.sum()/len(reluare)*100:.2f} % of the data")
-
-# 3. Prepare the data for vizualizing
-df["data_ora"] = pd.to_datetime(df["data_ora"])
-df["hour"] = df["data_ora"].dt.hour
-df["day"] = df["data_ora"].dt.day_name()
-df["month"] = df["data_ora"].dt.month_name()
-df["year"] = df["data_ora"].dt.year
-
-# accidents per hour
-plt.figure(figsize=(10, 5))
-sns.countplot(x="hour", data=df, palette="Blues_d")
-plt.title("Distribution of accidents per hour")
-plt.xlabel("Hour")
-plt.ylabel("Frequency")
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-#accident per day
-day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-plt.figure(figsize=(10, 5))
-sns.countplot(x="day", data=df, palette="Blues_d", order=day_order)
-plt.title("Distribution of accidents per day")
-plt.xlabel("Day")
-plt.ylabel("Frequency")
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-#accident per month
-month_order = ["January", "February", "March", "April", "May", "June",
+SUBDIR = "eda"
+DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+MONTH_ORDER = ["January", "February", "March", "April", "May", "June",
                "July", "August", "September", "October", "November", "December"]
-plt.figure(figsize=(10, 5))
-sns.countplot(x="month", data=df, palette="Blues_d", order=month_order)
-plt.title("Distribution of accidents per month")
-plt.xlabel("Month")
-plt.ylabel("Frequency")
-plt.grid(True)
-plt.tight_layout()
-plt.show()
 
-# accident per year
-plt.figure(figsize=(10, 5))
-sns.countplot(x="year", data=df, palette="Blues_d")
-plt.title("Distribution of accidents per year")
-plt.xlabel("Year")
-plt.ylabel("Frequency")
-plt.grid(True)
-plt.tight_layout()
-plt.show()
 
-# heatmap day-hour accidents
-pivot = df.groupby(["day", "hour"]).size().unstack().fillna(0)
-pivot = pivot.reindex(day_order)
+def countplot(df, column, title, xlabel, name, order=None):
+    plt.figure(figsize=(10, 5))
+    sns.countplot(x=column, data=df, hue=column, palette="Blues_d", order=order, legend=False)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel("Accidents")
+    plt.grid(True, axis="y", alpha=0.4)
+    plt.tight_layout()
+    save_figure(name, subdir=SUBDIR)
 
-plt.figure(figsize=(12, 6))
-sns.heatmap(pivot, cmap="YlOrRd")
-plt.title("Heatmap: Accidents per day and hour")
-plt.xlabel("Hour")
-plt.ylabel("Day")
-plt.tight_layout()
-plt.show()
 
-# top 15 counties by nr. of accidents
-mask = df[~df["judet"].str.contains("nementionat", case=False, na=False)]
-top_15_counties = mask["judet"].value_counts().head(15)
-sns.barplot(x=top_15_counties.values, y=top_15_counties.index,  palette="Blues_d")
-plt.title("15 most dangerous counties")
-plt.xlabel("Accidents")
-plt.ylabel("County")
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+def barh(values, title, xlabel, ylabel, name):
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=values.values, y=values.index, hue=values.index, palette="Blues_d", legend=False)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.grid(True, axis="x", alpha=0.4)
+    plt.tight_layout()
+    save_figure(name, subdir=SUBDIR)
 
-# top 15 roads by nr. of accidents
-top_15_roads = df["drum"].dropna().value_counts().head(15)
-sns.barplot(x=top_15_roads.values, y=top_15_roads.index,  palette="Blues_d")
-plt.title("15 most dangerous roads")
-plt.xlabel("Accidents")
-plt.ylabel("Roads")
-plt.grid(True)
-plt.tight_layout()
-plt.show()
 
-# mean time interval of the traffic resumption in the most affected counties (no outlayers data)
-no_outlayers_data = df[(df["reluare"] <= high_val) &
-                       (~df["judet"].str.contains("nementionat", case=False, na=False)) &
-                       (df["judet"].isin(top_15_counties.index))]
-mean_traffic_ressumption = no_outlayers_data.groupby("judet")["reluare"].mean().sort_values(ascending=False)
+def main():
+    df = load_clean()
+    df.info()
 
-plt.figure(figsize=(12, 6))
-sns.barplot(x=mean_traffic_ressumption.values, y=mean_traffic_ressumption.index, palette="Blues_d")
-plt.title("Mean time interval of the traffic resumption in the most affected counties (no outlayers data)")
-plt.xlabel("The mean of traffic ressumption (Min.)")
-plt.ylabel("County")
-plt.tight_layout()
-plt.show()
+    # 1. Distribution of traffic resumption time
+    reluare = df["reluare"].dropna()
+    plt.figure(figsize=(10, 5))
+    sns.histplot(reluare, bins=30, kde=True, color="steelblue")
+    plt.title("Traffic resumption time - distribution")
+    plt.xlabel("Minutes")
+    plt.ylabel("Accidents")
+    plt.tight_layout()
+    save_figure("resumption_histogram", subdir=SUBDIR)
+
+    plt.figure(figsize=(6, 5))
+    sns.boxplot(y=reluare[reluare > 0], orient="v")
+    plt.yscale("log")
+    plt.title("Traffic resumption time (log scale)")
+    plt.ylabel("Minutes (log)")
+    plt.grid(True, alpha=0.4)
+    save_figure("resumption_boxplot", subdir=SUBDIR)
+
+    # 2. Outliers via IQR
+    q1, q3 = np.quantile(reluare, [0.25, 0.75])
+    low_val, high_val = max(0, q1 - 1.5 * (q3 - q1)), q3 + 1.5 * (q3 - q1)
+    inside = (reluare >= low_val) & (reluare <= high_val)
+    print(f"Values between {low_val} - {high_val}: {inside.mean() * 100:.2f} % of the data")
+
+    # 3. Time distributions
+    df["hour"] = df["data_ora"].dt.hour
+    df["day"] = df["data_ora"].dt.day_name()
+    df["month"] = df["data_ora"].dt.month_name()
+    df["year"] = df["data_ora"].dt.year
+
+    countplot(df, "hour", "Accidents per hour", "Hour", "accidents_per_hour")
+    countplot(df, "day", "Accidents per day of week", "Day", "accidents_per_day", order=DAY_ORDER)
+    countplot(df, "month", "Accidents per month", "Month", "accidents_per_month", order=MONTH_ORDER)
+    countplot(df, "year", "Accidents per year", "Year", "accidents_per_year")
+
+    pivot = df.groupby(["day", "hour"]).size().unstack(fill_value=0).reindex(DAY_ORDER)
+    plt.figure(figsize=(12, 6))
+    sns.heatmap(pivot, cmap="YlOrRd")
+    plt.title("Accidents per day and hour")
+    plt.xlabel("Hour")
+    plt.ylabel("Day")
+    plt.tight_layout()
+    save_figure("heatmap_day_hour", subdir=SUBDIR)
+
+    # 4. Locations (by number of reported accidents - not a risk measure)
+    known = df[df["judet"] != UNKNOWN_COUNTY]
+    top_counties = known["judet"].value_counts().head(15)
+    barh(top_counties, "Top 15 counties by number of reported accidents",
+         "Accidents", "County", "top_counties")
+
+    top_roads = df["drum"].dropna().value_counts().head(15)
+    barh(top_roads, "Top 15 roads by number of reported accidents",
+         "Accidents", "Road", "top_roads")
+
+    # 5. Mean resumption time in the counties with most accidents (no outliers)
+    subset = known[(known["reluare"] <= high_val) & known["judet"].isin(top_counties.index)]
+    mean_resumption = subset.groupby("judet")["reluare"].mean().sort_values(ascending=False)
+    barh(mean_resumption, "Mean traffic resumption time - top 15 counties (no outliers)",
+         "Minutes", "County", "mean_resumption_by_county")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,12 @@
+{
+  "n_test": 607,
+  "n_test_fatal": 45,
+  "prevalence": 0.0741,
+  "cv_roc_auc_mean": 0.6328,
+  "cv_roc_auc_std": 0.0276,
+  "cv_pr_auc_mean": 0.1578,
+  "test_roc_auc": 0.6398,
+  "test_pr_auc": 0.1485,
+  "fatal_precision": 0.1304,
+  "fatal_recall": 0.3333
+}

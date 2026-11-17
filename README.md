@@ -1,6 +1,6 @@
 # Romanian Traffic Accidents – Data Science Project
 
-This project is a complete end-to-end data science pipeline focused on analyzing and modeling traffic accident data collected from the official Romanian Police website.
+This project is a complete end-to-end data science pipeline focused on analyzing and modeling traffic accident data collected from the official Romanian Police website (politiaromana.ro, "Info trafic" – about 3,900 reports, 2019–2025).
 
 ## Project Objectives
 
@@ -13,15 +13,23 @@ This project is a complete end-to-end data science pipeline focused on analyzing
 ## Project Structure
 
 ```
-accidente_project/
-├── data/
-├── scripts/
-├── analysis/
-├── dashboards/
-├── visuals/
-├── requirements.txt
+├── accidents/            shared package – every script imports from here
+│   ├── config.py         paths, constants, county list, dictionaries
+│   ├── text.py           text extraction (county, road, resumption, vehicles, victims)
+│   ├── data.py           loading + common filters
+│   ├── plotting.py       saves figures to visuals/ (optionally shows them)
+│   └── scraping.py       HTML parsing for the police website
+├── scripts/              pipeline steps: scraper, cleaning, processing, models
+├── analysis/             EDA, risk scoring, vehicle analysis
+├── dashboards/           Streamlit app
+├── tests/                pytest suite (extraction rules, scraper parsing, data checks)
+├── data/                 raw, clean and processed CSVs
+├── visuals/              generated figures (one folder per analysis)
+├── reports/              generated model metrics (JSON)
+├── run_pipeline.py       runs every step in order
+├── Makefile
+├── requirements.txt      pinned versions (requirements-dev.txt adds pytest)
 └── README.md
-* all the scripts use Pathlib for establishing the path to the resources, so they are compatible with any working directory.
 ```
 
 ## Technologies Used
@@ -32,65 +40,62 @@ accidente_project/
 - scikit-learn, XGBoost, Optuna – ML models and tuning
 - SHAP – Model interpretability
 - Streamlit – Interactive dashboard
+- pytest – Tests
 
-## Main Deliverables
+## Pipeline
 
-### ETL + Feature Extraction
-- scraper_data.py: Automatically extracts structured articles
-- cleaning_data.py: Cleans raw accident info, constructs datetime and duration
-- process_data.py: Extracts vehicle types and counts, victims and deaths
-
-### EDA + Risk Analysis
-- vizualization_eda_accidente.py: Distributions by time and location
-- processed_data_analysis.py: Risk scoring for roads and counties
-- processed_data_analysis_vehicles.py: Risk by vehicle type
-
-### Machine Learning
-- classification_model.py: Predicts whether an accident involves death
-- regression_time_resumption.py: Predicts duration of blocked traffic using XGBoost and Optuna
-
-### Dashboard
-- dashboards.py: Explore accident metrics and patterns interactively
+| Step | Script | Output |
+|---|---|---|
+| 1. Scrape (optional) | `scripts/scraper_data.py` | `data/accidente.csv` |
+| 2. Clean | `scripts/cleaning_data.py` | `data/accidente_clean.csv` – county, road, resumption minutes, timestamp |
+| 3. Extract | `scripts/process_data.py` | `data/accidente_processed.csv` – vehicles, injured, deaths |
+| 4. EDA | `analysis/vizualization_eda_accidente.py` | `visuals/eda/` |
+| 5. Risk | `analysis/processed_data_analysis.py` | `visuals/risk/` |
+| 6. Vehicles | `analysis/processed_data_analysis_vehicles.py` | `visuals/vehicles/` |
+| 7. Classification | `scripts/classification_model.py` | `visuals/classification/`, `reports/` |
+| 8. Regression | `scripts/regression_time_resumption.py` | `visuals/regression/`, `reports/` |
+| Dashboard | `dashboards/dashboards.py` | Streamlit app |
 
 ## How to Run
 
-1. Clone the repo and install dependencies:
+Requires Python 3.13 (other recent versions will likely work).
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
-2. (Optional) Run the scraper:
+Run the whole pipeline (about 30 seconds); figures are saved, not shown:
 
 ```bash
-python scripts/scraper_data.py
+python run_pipeline.py
 ```
 
-3. Clean and process the data:
+Useful variants: `--skip-models`, `--show` (also open every figure), `--scrape` (re-scrape first). Each script can also be run on its own, e.g. `python scripts/classification_model.py`, from any working directory.
+
+Tests:
 
 ```bash
-python scripts/cleaning_data.py
-python scripts/process_data.py
+python -m pytest
 ```
 
-4. Run analysis and models:
-
-```bash
-python analysis/vizualization_eda_accidente.py
-python analysis/processed_data_analysis.py
-python scripts/classification_model.py
-python scripts/regression_time_resumption.py
-```
-
-5. Launch the dashboard:
+Dashboard:
 
 ```bash
 streamlit run dashboards/dashboards.py
 ```
 
+Scraper (needs Chrome; Selenium downloads the driver automatically). It overwrites `data/accidente.csv` unless `--append` is given:
+
+```bash
+python scripts/scraper_data.py --start-page 1 --end-page 5 --output data/sample.csv
+```
+
+With `make`: `make install-dev`, `make pipeline`, `make test`, `make dashboard`.
+
 ## Results
 
 All metrics are computed on a held-out test set that the model never sees during training or tuning.
+They are written to `reports/classification_metrics.json` and `reports/regression_metrics.json` on every run.
 
 ### Classification – is the accident fatal?
 Fatal accidents are ~7.4% of the data. Features: number of injured, resumption time, county, road.
@@ -124,40 +129,16 @@ XGBoost barely beats the constant baseline, so the current features do not expla
 - Vehicle regex: fixed missing `|` that broke the `ansambluri rutiere` / `autocisterna` patterns.
 - Risk score: roads/counties without fatal accidents are no longer dropped (NaN) from the ranking.
 
-> Note: the images in `visuals/` were produced before these fixes and will be regenerated.
+## Visuals
 
-## Example Visuals
+All figures are regenerated by `python run_pipeline.py`.
 
-### EDA
-- [eda_1.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/eda_1.png)
-- [eda_2.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/eda_2.png)
-- [eda_3.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/eda_3.png)
-- [eda_4.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/eda_4.png)
-- [eda_5.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/eda_5.png)
-- [eda_6.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/eda_6.png)
-
-### Classification Model
-- [classification_model_1.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/classification_model_1.png)
-- [classificatio_model_2.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/classificatio_model_2.png)
-- [classification_model_3.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/classification_model_3.png)
-- [classification_model_4.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/classification_model_4.png)
-
-### Regression Model
-- [regression_model_1.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/regression_model_1.png)
-
-### Streamlit Dashboard
-- [streamlit_1.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/streamlit_1.png)
-- [streamlit_2.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/streamlit_2.png)
-- [streamlit_3.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/streamlit_3.png)
-
-### Risk and Victim Analysis
-- [processed_da_2.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/processed_da_2.png)
-- [processed_da_3.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/processed_da_3.png)
-- [Processed_da_4.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/Processed_da_4.png)
-
-### Vehicle Analysis
-- [processed_veh_1.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/processed_veh_1.png)
-- [processed_veh_2.png](https://github.com/AlexNegulescu111/Data_science_project_accidents/blob/main/visuals/processed_veh_2.png)
+- **EDA** (`visuals/eda/`): [accidents per hour](visuals/eda/accidents_per_hour.png), [per day](visuals/eda/accidents_per_day.png), [per month](visuals/eda/accidents_per_month.png), [per year](visuals/eda/accidents_per_year.png), [day × hour heatmap](visuals/eda/heatmap_day_hour.png), [top counties](visuals/eda/top_counties.png), [top roads](visuals/eda/top_roads.png), [resumption time histogram](visuals/eda/resumption_histogram.png), [boxplot](visuals/eda/resumption_boxplot.png), [mean resumption by county](visuals/eda/mean_resumption_by_county.png)
+- **Risk** (`visuals/risk/`): [roads](visuals/risk/top_roads_risk.png), [counties](visuals/risk/top_counties_risk.png), [victims by resumption interval](visuals/risk/victims_by_resumption.png)
+- **Vehicles** (`visuals/vehicles/`): [vehicles in serious accidents](visuals/vehicles/vehicles_in_serious_accidents.png), [mean deaths by vehicle type](visuals/vehicles/mean_deaths_by_vehicle.png)
+- **Classification** (`visuals/classification/`): [confusion matrix](visuals/classification/confusion_matrix.png), [ROC & PR curves](visuals/classification/roc_pr_curves.png), [SHAP importance](visuals/classification/shap_importance.png), SHAP explanations of fatal cases ([1](visuals/classification/shap_fatal_case_1.png), [2](visuals/classification/shap_fatal_case_2.png), [3](visuals/classification/shap_fatal_case_3.png))
+- **Regression** (`visuals/regression/`): [predicted vs actual](visuals/regression/predicted_vs_actual.png), [feature importance](visuals/regression/feature_importance.png)
+- **Dashboard** (`visuals/dashboard/`): [overview](visuals/dashboard/dashboard_overview.png), [roads & heatmap](visuals/dashboard/dashboard_roads_heatmap.png)
 
 ## TODOs (Optional Improvements)
 

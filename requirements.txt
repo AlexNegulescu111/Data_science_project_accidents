@@ -1,11 +1,12 @@
-pandas>=2.1
-numpy
-matplotlib
-seaborn>=0.13
-scikit-learn>=1.4
-xgboost
-optuna
-shap
-streamlit
-selenium>=4.6
-beautifulsoup4
+# Tested with Python 3.13
+pandas==3.0.5
+numpy==2.5.3
+matplotlib==3.11.2
+seaborn==0.13.2
+scikit-learn==1.9.1
+xgboost==3.4.1
+optuna==5.1.0
+shap==0.54.1
+streamlit==1.67.0
+selenium==4.52.0
+beautifulsoup4==4.15.0

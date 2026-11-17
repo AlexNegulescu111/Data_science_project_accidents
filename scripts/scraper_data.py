@@ -1,79 +1,110 @@
+"""Step 1 (optional): scrape accident reports from politiaromana.ro.
+
+Examples:
+    python scripts/scraper_data.py                       # all pages -> data/accidente.csv (overwrites)
+    python scripts/scraper_data.py --start-page 1 --end-page 5 --output data/sample.csv
+    python scripts/scraper_data.py --start-page 107 --append   # resume an interrupted run
+
+Requires Chrome; Selenium (>= 4.6) downloads a matching driver automatically.
+"""
+import sys
 from pathlib import Path
-ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import argparse
 import csv
 import time
-from bs4 import BeautifulSoup
+
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
-# Setăm calea către chromedriver
-path_to_webdriver = "C:/chromedriver/chromedriver.exe"
-service = Service(path_to_webdriver)
-driver = webdriver.Chrome(service=service)
+from accidents.config import RAW_CSV
+from accidents.scraping import BASE_URL, CSV_HEADER, parse_article, parse_listing
 
-# Deschidem fișierul CSV o singură dată, în modul scriere
-with open(ROOT / "data" / "accidente.csv", "a", encoding="utf-8-sig", newline="") as doc: #TODO: de modificat in w
-    writer = csv.writer(doc)
-    
-    # Scriem anteturile coloanelor în fișier
-    # writer.writerow(["Nr.crt.", "Titlu", "Data", "Ora", "Descriere", "Reluare"])TODO: de eliminat comentariu
-    crt = 0  # Contor pentru numărul curent de înregistrare
-    page = 107  # Pagină curentă de pe site TODO: de modificat page = 1
 
-    while True:
-        # Construim URL-ul pentru pagina curentă
-        url = f"https://politiaromana.ro/ro/info-trafic?page={page}&statusActiv=0&categorie=2&data="
+def parse_args():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--start-page", type=int, default=1)
+    p.add_argument("--end-page", type=int, default=None, help="last page to scrape (default: until no articles)")
+    p.add_argument("--output", type=Path, default=RAW_CSV)
+    p.add_argument("--append", action="store_true", help="append to the output file instead of overwriting it")
+    p.add_argument("--delay", type=float, default=1.0, help="seconds to wait between requests (be polite)")
+    p.add_argument("--timeout", type=float, default=15.0, help="seconds to wait for a page to load")
+    p.add_argument("--headed", action="store_true", help="show the browser window")
+    return p.parse_args()
+
+
+def make_driver(headed):
+    options = webdriver.ChromeOptions()
+    if not headed:
+        options.add_argument("--headless=new")
+    return webdriver.Chrome(options=options)
+
+
+def load(driver, url, css, timeout):
+    """Open `url` and wait until `css` is present; returns the HTML or None."""
+    try:
         driver.get(url)
-        print(f"Pagina {page} conectată")
-        time.sleep(1)  # Așteptăm încărcarea completă a paginii
+        WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, css)))
+        return driver.page_source
+    except TimeoutException:
+        print(f"  timeout: {url}")
+    except WebDriverException as exc:
+        print(f"  browser error on {url}: {exc.msg}")
+    return None
 
-        # Parsăm codul HTML cu BeautifulSoup
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        links = soup.select("h3 a")  # Selectăm toate linkurile către articole
 
-        # Dacă nu mai sunt linkuri pe pagină, încheiem căutarea
-        if not links:
-            print("Căutare finalizată — nu mai sunt pagini cu articole.")
-            break
+def last_row_number(path):
+    """Continue numbering when appending to an existing file."""
+    try:
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.reader(f))
+        return int(rows[-1][0]) if len(rows) > 1 else 0
+    except (FileNotFoundError, ValueError, IndexError):
+        return 0
 
-        # Pentru fiecare link de articol de pe pagină
-        for link in links:
-            href = link.get("href")  # Extragem linkul complet
-            driver.get(href)  # Navigăm la pagina articolului
-            time.sleep(0.8)
 
-            # Parsăm HTML-ul paginii articolului
-            element_soup = BeautifulSoup(driver.page_source, "html.parser")
+def main():
+    args = parse_args()
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    append = args.append and args.output.exists()
+    crt = last_row_number(args.output) if append else 0
 
-            # Inițializăm variabilele cu valori goale
-            titlu = ""
-            data = ""
-            ora = ""
-            descriere = ""
-            reluare = ""
+    driver = make_driver(args.headed)
+    try:
+        with open(args.output, "a" if append else "w", encoding="utf-8-sig", newline="") as doc:
+            writer = csv.writer(doc)
+            if not append:
+                writer.writerow(CSV_HEADER)
 
-            # Extragem titlul articolului (dacă există)
-            try:
-                titlu = element_soup.select_one("div.descDetaliiObiecte h3").text.strip()
-            except:
-                pass  # Dacă nu există titlu, lăsăm gol
+            page = args.start_page
+            while args.end_page is None or page <= args.end_page:
+                html = load(driver, BASE_URL.format(page=page), "body", args.timeout)
+                links = parse_listing(html) if html else []
+                if not links:
+                    print(f"Page {page}: no articles - done.")
+                    break
+                print(f"Page {page}: {len(links)} articles")
 
-            # Extragem paragrafele (data, ora, descriere, reluare)
-            paragrafe = element_soup.select("div.descDetaliiObiecte p")
-            if len(paragrafe) > 0:
-                data = paragrafe[0].text.strip()
-                ora = paragrafe[1].text.strip()
-                descriere = paragrafe[3].text.strip()
-                reluare = paragrafe[4].text.strip()
+                for href in links:
+                    time.sleep(args.delay)
+                    article_html = load(driver, href, "div.descDetaliiObiecte", args.timeout)
+                    if article_html is None:
+                        continue
+                    article = parse_article(article_html)
+                    crt += 1
+                    writer.writerow([crt] + [article[c] for c in CSV_HEADER[1:]])
+                    print(f"  saved: {article['Titlu'][:80]}")
+                doc.flush()
+                page += 1
+                time.sleep(args.delay)
+    finally:
+        driver.quit()
+    print(f"Done: {crt} rows in {args.output}")
 
-            # Incrementez contorul și scriu rândul în CSV
-            crt += 1
-            writer.writerow([crt, titlu, data, ora, descriere, reluare])
-            print(f"Articol salvat: {titlu}")
 
-        # Trecem la pagina următoare
-        page += 1
-
-# Închidem browserul la final
-driver.quit()
-print("Proces complet.")
+if __name__ == "__main__":
+    main()
