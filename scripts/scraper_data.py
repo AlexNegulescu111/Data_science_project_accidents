@@ -12,7 +12,7 @@ service = Service(path_to_webdriver)
 driver = webdriver.Chrome(service=service)
 
 # Deschidem fișierul CSV o singură dată, în modul scriere
-with open("data/accidente.csv", "a", encoding="utf-8-sig", newline="") as doc: #TODO: de modificat in w
+with open(ROOT / "data" / "accidente.csv", "a", encoding="utf-8-sig", newline="") as doc: #TODO: de modificat in w
     writer = csv.writer(doc)
     
     # Scriem anteturile coloanelor în fișier

@@ -2,7 +2,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 
 # 1. Load data
 df = pd.read_csv(ROOT / "data" / "accidente_processed.csv")
@@ -10,7 +9,6 @@ df = pd.read_csv(ROOT / "data" / "accidente_processed.csv")
 # 2. Clean data
 df = df[["nr_morti", "nr_raniti", "reluare", "judet", "drum"]].dropna()
 df = df[~df["judet"].str.contains("nementionat", case=False)]
-df = df[~df["drum"].str.contains("nan", case=False)]
 df_deaths = df[df["nr_morti"] > 0]
 df_wounded = df[df["nr_raniti"] > 0]
 
@@ -35,20 +33,29 @@ wounded_total_percentage_road = df_wounded.groupby("drum")["nr_raniti"].agg("sum
 deaths_total_percentage_county = df_deaths.groupby("judet")["nr_morti"].agg("sum")/df_deaths["nr_morti"].sum()
 wounded_total_percentage_county = df_wounded.groupby("judet")["nr_raniti"].agg("sum")/df_wounded["nr_raniti"].sum()
 
-road_risk = (
-    deaths_accidents_road*0.4 + 
-    wounded_accidents_road*0.2 + 
-    np.log1p(accidents_road)*0.2 + 
-    deaths_total_percentage_road*0.1 + 
-    wounded_total_percentage_road*0.1)
-road_risk_zscore = (road_risk - road_risk.mean()) / road_risk.std()
-county_risk = (
-    deaths_accidents_county*0.4 + 
-    wounded_accidents_county*0.2 + 
-    np.log1p(accidents_county)*0.2 + 
-    deaths_total_percentage_county*0.1 + 
-    wounded_total_percentage_county*0.1)
-county_risk_zscore = (county_risk - county_risk.mean()) / county_risk.std()
+# Combine the components into one table per road/county. A road with no
+# fatal accidents must get 0 (not NaN) for the "deaths" components, otherwise
+# the sum below becomes NaN and the road silently disappears from the ranking.
+def risk_score(acc_deaths, acc_wounded, acc_all, tot_deaths, tot_wounded):
+    parts = pd.concat(
+        [acc_deaths, acc_wounded, acc_all, tot_deaths, tot_wounded], axis=1
+    ).fillna(0)
+    parts.columns = ["acc_deaths", "acc_wounded", "acc_all", "tot_deaths", "tot_wounded"]
+    risk = (
+        parts["acc_deaths"] * 0.4 +
+        parts["acc_wounded"] * 0.2 +
+        parts["acc_all"] * 0.2 +
+        parts["tot_deaths"] * 0.1 +
+        parts["tot_wounded"] * 0.1)
+    return risk, (risk - risk.mean()) / risk.std()
+
+
+road_risk, road_risk_zscore = risk_score(
+    deaths_accidents_road, wounded_accidents_road, accidents_road,
+    deaths_total_percentage_road, wounded_total_percentage_road)
+county_risk, county_risk_zscore = risk_score(
+    deaths_accidents_county, wounded_accidents_county, accidents_county,
+    deaths_total_percentage_county, wounded_total_percentage_county)
 
 
 comparison_df_road = pd.DataFrame({
@@ -98,17 +105,7 @@ plt.show()
 # vizualize the nr. of victims based on traffic resumption intervals
 df_dangerous = pd.concat([df_deaths, df_wounded[df_wounded["nr_raniti"]>=2]]).drop_duplicates()
 df_dangerous["victime"] = df_dangerous["nr_morti"] + df_dangerous["nr_raniti"]
-df_dangerous["reluare_bin"] = pd.cut(df_dangerous["reluare"], bins=[0,10,20,30,60,90,180,360,9999])
-df_dangerous.groupby("reluare_bin")["victime"].sum().plot(kind="bar", title="Dangerous accidents - nr. of victims based on traffic resumption intervals")
-plt.xlabel("Traffic resumption intervals")
-plt.ylabel("Nr. of victims")
-plt.tight_layout()
-plt.show()
-
-# vizualize the nr. of victims based on traffic resumption intervals
-df_dangerous = pd.concat([df_deaths, df_wounded[df_wounded["nr_raniti"]>=2]]).drop_duplicates()
-df_dangerous["victime"] = df_dangerous["nr_morti"] + df_dangerous["nr_raniti"]
-df_dangerous["reluare_bin"] = pd.cut(df_dangerous["reluare"], bins=[0,10,20,30,60,90,180,360,9999])
+df_dangerous["reluare_bin"] = pd.cut(df_dangerous["reluare"], bins=[0,10,20,30,60,90,180,360,9999], include_lowest=True)
 df_dangerous.groupby("reluare_bin")["victime"].sum().plot(kind="bar", title="Dangerous accidents - nr. of victims based on traffic resumption intervals")
 plt.xlabel("Traffic resumption intervals")
 plt.ylabel("Nr. of victims")

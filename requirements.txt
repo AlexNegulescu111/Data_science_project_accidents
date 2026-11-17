@@ -1,11 +1,11 @@
-pandas
+pandas>=2.1
 numpy
 matplotlib
-seaborn
-scikit-learn
+seaborn>=0.13
+scikit-learn>=1.4
 xgboost
 optuna
 shap
 streamlit
-selenium
+selenium>=4.6
 beautifulsoup4
