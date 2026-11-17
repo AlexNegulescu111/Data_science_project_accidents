@@ -37,19 +37,19 @@ from accidents.features import (BINARY, CATEGORICAL, CONTINUOUS, NUMERIC,
 from accidents.plotting import plt, save_figure
 
 SUBDIR = "classification"
-# Phase-1 feature set, kept only as a reference: `nr_raniti` and `reluare`
+# Phase-1 feature set, kept only as a reference: `injured` and `resumption_min`
 # are known only *after* the accident, so they are not circumstances.
-REFERENCE_FEATURES = ["nr_raniti", "reluare", "judet", "drum"]
+REFERENCE_FEATURES = ["injured", "resumption_min", "county", "road"]
 
 
 def prepare():
     df = load_processed()
-    df = df[is_accident(df["descriere"])].copy()
-    df["judet"] = df["judet"].replace(UNKNOWN_COUNTY, "unknown")
-    df["drum"] = df["drum"].fillna("unknown")
+    df = df[is_accident(df["description"])].copy()
+    df["county"] = df["county"].replace(UNKNOWN_COUNTY, "unknown")
+    df["road"] = df["road"].fillna("unknown")
     X = build_features(df)
     X_ref = df[REFERENCE_FEATURES]
-    y = (df["nr_morti"] > 0).astype(int)
+    y = (df["deaths"] > 0).astype(int)
     return X, X_ref, y
 
 
@@ -65,7 +65,7 @@ def candidate_models():
     ])
     forest = Pipeline([
         ("prep", ColumnTransformer([
-            ("county", TargetEncoder(cv=KFold(5, shuffle=True, random_state=RANDOM_STATE)), ["judet"]),
+            ("county", TargetEncoder(cv=KFold(5, shuffle=True, random_state=RANDOM_STATE)), ["county"]),
             ("road", OneHotEncoder(handle_unknown="ignore", sparse_output=False), ["road_type"]),
             ("num", "passthrough", NUMERIC),
         ])),
@@ -88,8 +88,8 @@ def candidate_models():
 def reference_model():
     return Pipeline([
         ("prep", ColumnTransformer([
-            ("cat", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1), ["judet", "drum"]),
-            ("num", SimpleImputer(strategy="median"), ["nr_raniti", "reluare"]),
+            ("cat", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1), ["county", "road"]),
+            ("num", SimpleImputer(strategy="median"), ["injured", "resumption_min"]),
         ])),
         ("model", RandomForestClassifier(n_estimators=300, min_samples_leaf=5, class_weight="balanced",
                                          random_state=RANDOM_STATE, n_jobs=-1)),
@@ -106,7 +106,7 @@ def explain(name, pipe, X_test, y_test, n_cases=3):
     if name == "logistic_regression":
         coef = pd.Series(pipe.named_steps["model"].coef_[0], index=names)
         flags = coef[[n for n in names if n in BINARY]]
-        counties = coef[[n for n in names if n.startswith("judet_")]]
+        counties = coef[[n for n in names if n.startswith("county_")]]
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 6))
         for ax, values, title in [
             (ax1, flags, "Circumstances (vs. not present)"),
@@ -114,7 +114,7 @@ def explain(name, pipe, X_test, y_test, n_cases=3):
              "Counties (vs. average county)"),
         ]:
             odds = np.exp(values).sort_values()
-            ax.barh([n.replace("has_", "").replace("judet_", "") for n in odds.index], odds.values,
+            ax.barh([n.replace("has_", "").replace("county_", "") for n in odds.index], odds.values,
                     color=np.where(odds.values > 1, "firebrick", "steelblue"))
             ax.axvline(1, color="k", lw=1)
             ax.set_xscale("log")

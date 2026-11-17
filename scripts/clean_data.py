@@ -1,4 +1,4 @@
-"""Step 2: raw scraped CSV -> data/accidente_clean.csv
+"""Step 2: raw scraped CSV -> data/accidents_clean.csv
 
 Removes diacritics and bad rows, extracts county and road from the title,
 computes the traffic resumption time in minutes and builds a timestamp.
@@ -24,12 +24,12 @@ def clean(df):
     df = df.drop_duplicates(subset="Descriere", keep="first")
 
     out = pd.DataFrame(index=df.index)
-    out["judet"] = df["Titlu"].map(extract_county).fillna(UNKNOWN_COUNTY)
-    out["drum"] = df["Titlu"].map(extract_road)
+    out["county"] = df["Titlu"].map(extract_county).fillna(UNKNOWN_COUNTY)
+    out["road"] = df["Titlu"].map(extract_road)
 
-    ora = df["Ora"].str.replace("Ora: ", "", regex=False).str.strip()
-    out["reluare"] = pd.array(
-        [resumption_minutes(o, r, d) for o, r, d in zip(ora, df["Reluare"], df["Descriere"])],
+    report_time = df["Ora"].str.replace("Ora: ", "", regex=False).str.strip()
+    out["resumption_min"] = pd.array(
+        [resumption_minutes(o, r, d) for o, r, d in zip(report_time, df["Reluare"], df["Descriere"])],
         dtype="Int64",
     )
 
@@ -38,11 +38,11 @@ def clean(df):
     data_en = (df["Data"].str.replace("Data: ", "", regex=False)
                .str.replace(months_regex, lambda m: MONTHS_RO_EN[m.group(0)], regex=True))
     date = pd.to_datetime(data_en, format="%d %B %Y", errors="coerce")
-    out["data_ora"] = pd.to_datetime(
-        date.dt.strftime("%Y-%m-%d") + " " + ora, format="%Y-%m-%d %H:%M", errors="coerce"
+    out["timestamp"] = pd.to_datetime(
+        date.dt.strftime("%Y-%m-%d") + " " + report_time, format="%Y-%m-%d %H:%M", errors="coerce"
     )
-    out["descriere"] = df["Descriere"]
-    return out[["data_ora", "judet", "drum", "descriere", "reluare"]]
+    out["description"] = df["Descriere"]
+    return out[["timestamp", "county", "road", "description", "resumption_min"]]
 
 
 def main():

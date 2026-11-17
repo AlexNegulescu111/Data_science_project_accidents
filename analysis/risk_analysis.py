@@ -17,6 +17,7 @@ import pandas as pd
 from accidents.config import UNKNOWN_COUNTY
 from accidents.data import dangerous_accidents, load_processed
 from accidents.features import is_accident
+from accidents.geo import choropleth
 from accidents.plotting import plt, save_figure
 from accidents.stats import shrunk_rate, wilson_ci
 
@@ -27,7 +28,7 @@ TOP = 15
 
 def severity_table(df, key):
     g = df.groupby(key).agg(accidents=("fatal", "size"), fatal=("fatal", "sum"),
-                            deaths=("nr_morti", "sum"), injured=("nr_raniti", "sum"))
+                            deaths=("deaths", "sum"), injured=("injured", "sum"))
     overall = df["fatal"].mean()
     g["fatality_rate"] = g["fatal"] / g["accidents"]
     g["ci_low"], g["ci_high"] = wilson_ci(g["fatal"], g["accidents"])
@@ -62,13 +63,25 @@ def plot_severity(table, overall, label, name):
     save_figure(name, fig=fig, subdir=SUBDIR)
 
 
+def plot_county_maps(counties):
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+    choropleth(ax1, counties["fatal"].astype(float), cmap="Reds", label="fatal accidents")
+    ax1.set_title("Burden - fatal accidents per county")
+    choropleth(ax2, counties["shrunk_rate"] * 100, cmap="OrRd",
+               label="fatal accidents per 100 accidents (shrunk)")
+    ax2.set_title("Severity - share of accidents that are fatal")
+    fig.suptitle("Romanian traffic accidents 2019-2025 (police Info-trafic reports)", fontsize=13)
+    fig.tight_layout()
+    save_figure("county_maps", fig=fig, subdir=SUBDIR)
+
+
 def main():
     df = load_processed()
-    df = df[is_accident(df["descriere"])].copy()
-    df["fatal"] = (df["nr_morti"] > 0).astype(int)
+    df = df[is_accident(df["description"])].copy()
+    df["fatal"] = (df["deaths"] > 0).astype(int)
 
-    roads, overall = severity_table(df.dropna(subset=["drum"]), "drum")
-    counties, _ = severity_table(df[df["judet"] != UNKNOWN_COUNTY], "judet")
+    roads, overall = severity_table(df.dropna(subset=["road"]), "road")
+    counties, _ = severity_table(df[df["county"] != UNKNOWN_COUNTY], "county")
     print(f"{len(df)} accidents, national fatality rate {overall:.1%}")
     cols = ["accidents", "fatal", "fatality_rate", "ci_low", "ci_high", "shrunk_rate"]
     print("\nRoads by severity:\n", roads[roads["accidents"] >= MIN_ACCIDENTS]
@@ -80,14 +93,15 @@ def main():
     plot_severity(roads, overall, "roads", "roads_severity")
     plot_burden(counties, "counties", "counties_burden")
     plot_severity(counties, overall, "counties", "counties_severity")
+    plot_county_maps(counties)
 
     # Number of victims by traffic resumption interval (dangerous accidents)
     dangerous = dangerous_accidents(df).copy()
-    dangerous["victime"] = dangerous["nr_morti"] + dangerous["nr_raniti"]
-    dangerous["reluare_bin"] = pd.cut(dangerous["reluare"], bins=[0, 10, 20, 30, 60, 90, 180, 360, 9999],
+    dangerous["victims"] = dangerous["deaths"] + dangerous["injured"]
+    dangerous["resumption_bin"] = pd.cut(dangerous["resumption_min"], bins=[0, 10, 20, 30, 60, 90, 180, 360, 9999],
                                       include_lowest=True)
     plt.figure(figsize=(10, 5))
-    dangerous.groupby("reluare_bin", observed=False)["victime"].sum().plot(kind="bar", color="steelblue")
+    dangerous.groupby("resumption_bin", observed=False)["victims"].sum().plot(kind="bar", color="steelblue")
     plt.title("Dangerous accidents - victims by estimated traffic resumption interval")
     plt.xlabel("Traffic resumption interval (min)")
     plt.ylabel("Victims")

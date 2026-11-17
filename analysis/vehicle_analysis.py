@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 
+from accidents.config import VEHICLE_LABELS_EN
 from accidents.data import dangerous_accidents, load_processed, normalize_vehicles
 from accidents.features import circumstance_flags, is_accident
 from accidents.plotting import plt, save_figure
@@ -23,17 +24,18 @@ MIN_ACCIDENTS = 15
 
 def involvement(df):
     """One 0/1 column per vehicle type / vulnerable road user."""
-    vehicles = pd.get_dummies(df[["veh_1", "veh_2", "veh_3"]].stack()).groupby(level=0).max()
-    flags = circumstance_flags(df["descriere"])
-    vehicles["pieton (pedestrian)"] = flags["has_pedestrian"]
+    vehicles = pd.get_dummies(df[["vehicle_1", "vehicle_2", "vehicle_3"]].stack()).groupby(level=0).max()
+    flags = circumstance_flags(df["description"])
+    vehicles["pedestrian"] = flags["has_pedestrian"]
     vehicles["bicicleta"] = np.maximum(vehicles.get("bicicleta", 0), flags["has_cyclist"])
-    return vehicles.reindex(df.index, fill_value=0).astype(int)
+    vehicles = vehicles.reindex(df.index, fill_value=0).astype(int)
+    return vehicles.rename(columns=VEHICLE_LABELS_EN)
 
 
 def main():
     df = load_processed()
-    df = normalize_vehicles(df[is_accident(df["descriere"])])
-    fatal = (df["nr_morti"] > 0).astype(int)
+    df = normalize_vehicles(df[is_accident(df["description"])])
+    fatal = (df["deaths"] > 0).astype(int)
     overall = fatal.mean()
     inv = involvement(df)
 

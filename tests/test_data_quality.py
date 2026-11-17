@@ -18,22 +18,22 @@ def processed():
 
 
 def test_counties_are_valid(clean):
-    assert set(clean["judet"]) <= set(COUNTIES) | {UNKNOWN_COUNTY}
+    assert set(clean["county"]) <= set(COUNTIES) | {UNKNOWN_COUNTY}
 
 
 def test_no_diacritics_left(clean):
-    assert not clean["descriere"].str.contains("[ăâîșțşţĂÂÎȘȚŞŢ]").any()
+    assert not clean["description"].str.contains("[ăâîșțşţĂÂÎȘȚŞŢ]").any()
 
 
 def test_resumption_is_plausible(clean):
-    reluare = clean["reluare"].dropna()
-    assert (reluare >= 0).all()
-    assert reluare.max() <= 12 * 60
+    resumption = clean["resumption_min"].dropna()
+    assert (resumption >= 0).all()
+    assert resumption.max() <= 12 * 60
 
 
 def test_every_death_mention_is_counted(processed):
-    mentions = processed["descriere"].str.lower().str.contains(r"\bdeces|decedat|murit|si-a pierdut viata")
-    assert (processed.loc[mentions, "nr_morti"] > 0).all()
+    mentions = processed["description"].str.lower().str.contains(r"\bdeces|decedat|murit|si-a pierdut viata")
+    assert (processed.loc[mentions, "deaths"] > 0).all()
 
 
 def test_no_index_column(processed):

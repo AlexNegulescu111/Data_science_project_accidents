@@ -4,9 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 DATA_DIR = ROOT / "data"
-RAW_CSV = DATA_DIR / "accidente.csv"
-CLEAN_CSV = DATA_DIR / "accidente_clean.csv"
-PROCESSED_CSV = DATA_DIR / "accidente_processed.csv"
+RAW_CSV = DATA_DIR / "raw_reports.csv"
+CLEAN_CSV = DATA_DIR / "accidents_clean.csv"
+PROCESSED_CSV = DATA_DIR / "accidents_processed.csv"
 
 VISUALS_DIR = ROOT / "visuals"
 REPORTS_DIR = ROOT / "reports"
@@ -14,7 +14,7 @@ REPORTS_DIR = ROOT / "reports"
 RANDOM_STATE = 42
 
 # Label used when a title does not name a county (mostly motorway reports)
-UNKNOWN_COUNTY = "Nementionat"
+UNKNOWN_COUNTY = "UNKNOWN"
 
 # Romanian counties (without diacritics). Multi-word names are listed so that
 # e.g. "SATU MARE" is not truncated to "SATU".
@@ -77,4 +77,31 @@ VEHICLE_SINGULAR = {
     "autocare": "autocar",
     "dube": "duba",
     "tractoare": "tractor",
+}
+
+GEO_COUNTIES = DATA_DIR / "geo" / "romania_counties.geojson"
+
+# English display labels for the (Romanian) vehicle types found in the text
+VEHICLE_LABELS_EN = {
+    "autoturism": "car",
+    "autoutilitara": "van",
+    "autocamion": "truck",
+    "autotren": "truck with trailer",
+    "ansamblu rutier": "articulated lorry",
+    "tir": "TIR lorry",
+    "autocisterna": "tanker truck",
+    "cisterna": "tanker",
+    "microbuz": "minibus",
+    "autobuz": "bus",
+    "autocar": "coach",
+    "motocicleta": "motorcycle",
+    "bicicleta": "bicycle",
+    "scuter": "scooter",
+    "tractor": "tractor",
+    "autovehicul": "vehicle (unspecified)",
+    "tren": "train",
+    "basculanta": "dump truck",
+    "duba": "van (duba)",
+    "ambulanta": "ambulance",
+    "ATV": "ATV",
 }

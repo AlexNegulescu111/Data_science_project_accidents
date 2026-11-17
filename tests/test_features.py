@@ -59,18 +59,18 @@ def test_road_type(road, expected):
 
 def test_build_features_has_no_outcome_columns_and_no_nan():
     df = pd.DataFrame({
-        "judet": ["SIBIU", "Nementionat"],
-        "drum": ["A 1", None],
-        "data_ora": pd.to_datetime(["2024-05-04 15:50", "2024-05-06 08:10"]),
-        "total_nr_veh": [2, 15],
-        "descriere": ["coliziune frontala", "un pieton a fost lovit"],
-        "nr_morti": [1, 0], "nr_raniti": [2, 0], "reluare": [30, 60],
+        "county": ["SIBIU", "UNKNOWN"],
+        "road": ["A 1", None],
+        "timestamp": pd.to_datetime(["2024-05-04 15:50", "2024-05-06 08:10"]),
+        "vehicles_total": [2, 15],
+        "description": ["coliziune frontala", "un pieton a fost lovit"],
+        "deaths": [1, 0], "injured": [2, 0], "resumption_min": [30, 60],
     })
     X = build_features(df)
-    assert not {"nr_morti", "nr_raniti", "reluare"} & set(X.columns)
+    assert not {"deaths", "injured", "resumption_min"} & set(X.columns)
     assert X.notna().all().all()
     assert X["is_weekend"].tolist() == [1, 0]
-    assert X["total_nr_veh"].max() == 10          # clipped
+    assert X["vehicles_total"].max() == 10          # clipped
     assert set(NUMERIC) <= set(X.columns)
 
 

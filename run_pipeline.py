@@ -14,13 +14,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 
-ETL = ["scripts/cleaning_data.py", "scripts/process_data.py"]
+ETL = ["scripts/clean_data.py", "scripts/process_data.py"]
 ANALYSIS = [
-    "analysis/vizualization_eda_accidente.py",
-    "analysis/processed_data_analysis.py",
-    "analysis/processed_data_analysis_vehicles.py",
+    "analysis/eda.py",
+    "analysis/risk_analysis.py",
+    "analysis/vehicle_analysis.py",
 ]
-MODELS = ["scripts/classification_model.py", "scripts/regression_time_resumption.py"]
+MODELS = ["scripts/train_fatality_classifier.py", "scripts/train_resumption_regressor.py"]
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
     p.add_argument("--show", action="store_true", help="show figures on screen (they are always saved)")
     args = p.parse_args()
 
-    steps = (["scripts/scraper_data.py"] if args.scrape else []) + ETL + ANALYSIS
+    steps = (["scripts/scrape_data.py"] if args.scrape else []) + ETL + ANALYSIS
     if not args.skip_models:
         steps += MODELS
 

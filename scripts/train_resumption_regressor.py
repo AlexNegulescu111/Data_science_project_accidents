@@ -31,32 +31,32 @@ from accidents.features import NUMERIC, build_features, is_accident
 from accidents.plotting import plt, save_figure
 
 SUBDIR = "regression"
-PHASE2_NUMERIC = ["nr_morti", "nr_raniti", "hour", "day_of_week", "is_weekend"]
-CIRC_NUMERIC = ["nr_morti", "nr_raniti", "is_accident"] + NUMERIC
+PHASE2_NUMERIC = ["deaths", "injured", "hour", "day_of_week", "is_weekend"]
+CIRC_NUMERIC = ["deaths", "injured", "is_accident"] + NUMERIC
 
 
 def prepare():
-    df = load_processed().dropna(subset=["reluare"])
-    df["judet"] = df["judet"].replace(UNKNOWN_COUNTY, "unknown")
-    df["drum"] = df["drum"].fillna("unknown")
+    df = load_processed().dropna(subset=["resumption_min"])
+    df["county"] = df["county"].replace(UNKNOWN_COUNTY, "unknown")
+    df["road"] = df["road"].fillna("unknown")
     X = build_features(df)
-    X["drum"] = df["drum"]
-    X["nr_morti"] = df["nr_morti"]
-    X["nr_raniti"] = df["nr_raniti"]
-    X["is_accident"] = is_accident(df["descriere"]).astype(int)
-    return X, df["reluare"].astype(float)
+    X["road"] = df["road"]
+    X["deaths"] = df["deaths"]
+    X["injured"] = df["injured"]
+    X["is_accident"] = is_accident(df["description"]).astype(int)
+    return X, df["resumption_min"].astype(float)
 
 
 def make_pipeline(feature_set, params):
     if feature_set == "phase2":
         prep = ColumnTransformer([
-            ("cat", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1), ["judet", "drum"]),
+            ("cat", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1), ["county", "road"]),
             ("num", "passthrough", PHASE2_NUMERIC),
         ])
     else:
         prep = ColumnTransformer([
             ("te", TargetEncoder(target_type="continuous",
-                                 cv=KFold(5, shuffle=True, random_state=RANDOM_STATE)), ["judet", "drum"]),
+                                 cv=KFold(5, shuffle=True, random_state=RANDOM_STATE)), ["county", "road"]),
             ("road", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1), ["road_type"]),
             ("num", "passthrough", CIRC_NUMERIC),
         ])

@@ -12,26 +12,26 @@ pipeline:            ## clean -> process -> analysis -> models
 	$(PYTHON) run_pipeline.py
 
 etl:
-	$(PYTHON) scripts/cleaning_data.py
+	$(PYTHON) scripts/clean_data.py
 	$(PYTHON) scripts/process_data.py
 
 analysis: etl
-	$(PYTHON) analysis/vizualization_eda_accidente.py
-	$(PYTHON) analysis/processed_data_analysis.py
-	$(PYTHON) analysis/processed_data_analysis_vehicles.py
+	$(PYTHON) analysis/eda.py
+	$(PYTHON) analysis/risk_analysis.py
+	$(PYTHON) analysis/vehicle_analysis.py
 
 models: etl
-	$(PYTHON) scripts/classification_model.py
-	$(PYTHON) scripts/regression_time_resumption.py
+	$(PYTHON) scripts/train_fatality_classifier.py
+	$(PYTHON) scripts/train_resumption_regressor.py
 
 test:
 	$(PYTHON) -m pytest
 
 dashboard:
-	streamlit run dashboards/dashboards.py
+	streamlit run dashboard/app.py
 
-scrape:              ## overwrites data/accidente.csv
-	$(PYTHON) scripts/scraper_data.py
+scrape:              ## overwrites data/raw_reports.csv
+	$(PYTHON) scripts/scrape_data.py
 
 clean:
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

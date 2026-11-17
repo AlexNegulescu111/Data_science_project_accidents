@@ -1,9 +1,9 @@
 """Step 1 (optional): scrape accident reports from politiaromana.ro.
 
 Examples:
-    python scripts/scraper_data.py                       # all pages -> data/accidente.csv (overwrites)
-    python scripts/scraper_data.py --start-page 1 --end-page 5 --output data/sample.csv
-    python scripts/scraper_data.py --start-page 107 --append   # resume an interrupted run
+    python scripts/scrape_data.py                       # all pages -> data/raw_reports.csv (overwrites)
+    python scripts/scrape_data.py --start-page 1 --end-page 5 --output data/sample.csv
+    python scripts/scrape_data.py --start-page 107 --append   # resume an interrupted run
 
 Requires Chrome; Selenium (>= 4.6) downloads a matching driver automatically.
 """

@@ -43,9 +43,9 @@ def main():
     df.info()
 
     # 1. Distribution of traffic resumption time
-    reluare = df["reluare"].dropna()
+    resumption = df["resumption_min"].dropna()
     plt.figure(figsize=(10, 5))
-    sns.histplot(reluare, bins=30, kde=True, color="steelblue")
+    sns.histplot(resumption, bins=30, kde=True, color="steelblue")
     plt.title("Traffic resumption time - distribution")
     plt.xlabel("Minutes")
     plt.ylabel("Accidents")
@@ -53,7 +53,7 @@ def main():
     save_figure("resumption_histogram", subdir=SUBDIR)
 
     plt.figure(figsize=(6, 5))
-    sns.boxplot(y=reluare[reluare > 0], orient="v")
+    sns.boxplot(y=resumption[resumption > 0], orient="v")
     plt.yscale("log")
     plt.title("Traffic resumption time (log scale)")
     plt.ylabel("Minutes (log)")
@@ -61,16 +61,16 @@ def main():
     save_figure("resumption_boxplot", subdir=SUBDIR)
 
     # 2. Outliers via IQR
-    q1, q3 = np.quantile(reluare, [0.25, 0.75])
+    q1, q3 = np.quantile(resumption, [0.25, 0.75])
     low_val, high_val = max(0, q1 - 1.5 * (q3 - q1)), q3 + 1.5 * (q3 - q1)
-    inside = (reluare >= low_val) & (reluare <= high_val)
+    inside = (resumption >= low_val) & (resumption <= high_val)
     print(f"Values between {low_val} - {high_val}: {inside.mean() * 100:.2f} % of the data")
 
     # 3. Time distributions
-    df["hour"] = df["data_ora"].dt.hour
-    df["day"] = df["data_ora"].dt.day_name()
-    df["month"] = df["data_ora"].dt.month_name()
-    df["year"] = df["data_ora"].dt.year
+    df["hour"] = df["timestamp"].dt.hour
+    df["day"] = df["timestamp"].dt.day_name()
+    df["month"] = df["timestamp"].dt.month_name()
+    df["year"] = df["timestamp"].dt.year
 
     countplot(df, "hour", "Accidents per hour", "Hour", "accidents_per_hour")
     countplot(df, "day", "Accidents per day of week", "Day", "accidents_per_day", order=DAY_ORDER)
@@ -87,18 +87,18 @@ def main():
     save_figure("heatmap_day_hour", subdir=SUBDIR)
 
     # 4. Locations (by number of reported accidents - not a risk measure)
-    known = df[df["judet"] != UNKNOWN_COUNTY]
-    top_counties = known["judet"].value_counts().head(15)
+    known = df[df["county"] != UNKNOWN_COUNTY]
+    top_counties = known["county"].value_counts().head(15)
     barh(top_counties, "Top 15 counties by number of reported accidents",
          "Accidents", "County", "top_counties")
 
-    top_roads = df["drum"].dropna().value_counts().head(15)
+    top_roads = df["road"].dropna().value_counts().head(15)
     barh(top_roads, "Top 15 roads by number of reported accidents",
          "Accidents", "Road", "top_roads")
 
     # 5. Mean resumption time in the counties with most accidents (no outliers)
-    subset = known[(known["reluare"] <= high_val) & known["judet"].isin(top_counties.index)]
-    mean_resumption = subset.groupby("judet")["reluare"].mean().sort_values(ascending=False)
+    subset = known[(known["resumption_min"] <= high_val) & known["county"].isin(top_counties.index)]
+    mean_resumption = subset.groupby("county")["resumption_min"].mean().sort_values(ascending=False)
     barh(mean_resumption, "Mean traffic resumption time - top 15 counties (no outliers)",
          "Minutes", "County", "mean_resumption_by_county")
 

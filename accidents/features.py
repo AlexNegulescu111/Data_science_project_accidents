@@ -77,8 +77,8 @@ def time_features(timestamps):
     }, index=timestamps.index)
 
 
-CATEGORICAL = ["judet", "road_type"]
-CONTINUOUS = ["hour", "day_of_week", "month", "total_nr_veh"]
+CATEGORICAL = ["county", "road_type"]
+CONTINUOUS = ["hour", "day_of_week", "month", "vehicles_total"]
 BINARY = ["is_weekend"] + [f"has_{name}" for name in CIRCUMSTANCES]
 NUMERIC = CONTINUOUS + BINARY
 
@@ -86,10 +86,10 @@ NUMERIC = CONTINUOUS + BINARY
 def build_features(df):
     """Feature table (circumstances only) for the rows of `df`."""
     out = pd.concat([
-        df[["judet"]],
-        df["drum"].map(road_type).rename("road_type"),
-        time_features(df["data_ora"]),
-        df[["total_nr_veh"]].clip(upper=10),
-        circumstance_flags(df["descriere"]),
+        df[["county"]],
+        df["road"].map(road_type).rename("road_type"),
+        time_features(df["timestamp"]),
+        df[["vehicles_total"]].clip(upper=10),
+        circumstance_flags(df["description"]),
     ], axis=1)
     return out[CATEGORICAL + NUMERIC]
