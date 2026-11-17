@@ -1,12 +1,56 @@
 {
-  "n_test": 607,
-  "n_test_fatal": 45,
-  "prevalence": 0.0741,
-  "cv_roc_auc_mean": 0.6328,
-  "cv_roc_auc_std": 0.0276,
-  "cv_pr_auc_mean": 0.1578,
-  "test_roc_auc": 0.6398,
-  "test_pr_auc": 0.1485,
-  "fatal_precision": 0.1304,
-  "fatal_recall": 0.3333
+  "rows": "accidents only (non-accident reports removed)",
+  "n_train": 2453,
+  "n_test": 818,
+  "n_test_fatal": 79,
+  "prevalence": 0.0966,
+  "cv_model_comparison": {
+    "logistic_regression": {
+      "cv_roc_auc": 0.7044,
+      "cv_roc_auc_std": 0.0604,
+      "cv_pr_auc": 0.2693,
+      "cv_pr_auc_std": 0.0442
+    },
+    "random_forest": {
+      "cv_roc_auc": 0.7169,
+      "cv_roc_auc_std": 0.0563,
+      "cv_pr_auc": 0.2398,
+      "cv_pr_auc_std": 0.053
+    },
+    "gradient_boosting": {
+      "cv_roc_auc": 0.6605,
+      "cv_roc_auc_std": 0.0461,
+      "cv_pr_auc": 0.2265,
+      "cv_pr_auc_std": 0.0547
+    },
+    "reference_phase1_features": {
+      "cv_roc_auc": 0.6716,
+      "cv_roc_auc_std": 0.0496,
+      "cv_pr_auc": 0.1847,
+      "cv_pr_auc_std": 0.028
+    }
+  },
+  "selected_model": "logistic_regression",
+  "test_roc_auc": 0.7269,
+  "test_pr_auc": 0.2715,
+  "threshold": 0.6483,
+  "fatal_precision": 0.2623,
+  "fatal_recall": 0.4051,
+  "odds_ratios_circumstances": {
+    "has_frontal": 5.416,
+    "has_pedestrian": 4.324,
+    "has_cyclist": 2.756,
+    "has_fire": 2.175,
+    "has_motorcycle": 1.65,
+    "is_weekend": 1.629,
+    "has_heavy_vehicle": 1.542,
+    "has_run_off_road": 1.116,
+    "has_rail": 1.067,
+    "has_bus": 1.026,
+    "has_fixed_obstacle": 1.0,
+    "has_skid": 0.973,
+    "has_bad_weather": 0.962,
+    "has_animal": 0.642,
+    "has_rollover": 0.308
+  }
 }
