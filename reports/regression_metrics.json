@@ -1,0 +1,31 @@
+{
+  "n_test": 508,
+  "outlier_bounds_min": [
+    0.0,
+    105.0
+  ],
+  "xgboost_phase2_validation_rmse": 17.83,
+  "xgboost_phase2_best_params": {
+    "n_estimators": 356,
+    "max_depth": 4,
+    "learning_rate": 0.021667167064740325,
+    "subsample": 0.5225018622119946,
+    "min_child_weight": 1.4885224075592873
+  },
+  "xgboost_circumstances_validation_rmse": 17.53,
+  "xgboost_circumstances_best_params": {
+    "n_estimators": 297,
+    "max_depth": 2,
+    "learning_rate": 0.06820019259012768,
+    "subsample": 0.5951658113751768,
+    "min_child_weight": 4.868028596710683
+  },
+  "baseline_mean_mae": 14.23,
+  "baseline_mean_rmse": 17.87,
+  "baseline_median_mae": 14.27,
+  "baseline_median_rmse": 18.47,
+  "xgboost_phase2_mae": 13.93,
+  "xgboost_phase2_rmse": 17.6,
+  "xgboost_circumstances_mae": 13.87,
+  "xgboost_circumstances_rmse": 17.6
+}
